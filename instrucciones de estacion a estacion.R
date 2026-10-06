@@ -6,6 +6,7 @@ library(ggplot2)
 library(tidygraph)
 
 #Decargamos los mapas del metro 
+#Existen en un solo archivo Zip tanto Estaciones como Lineas
 temp <- tempfile()
 download.file("https://datos.cdmx.gob.mx/dataset/1b014317-ddb1-46c7-ac79-7330c652abe3/resource/288b10dd-4f21-4338-b1ed-239487820512/download/288b10dd-4f21-4338-b1ed-239487820512.zip",temp, mode ="wb")
 archivos <- unzip(temp, list = TRUE)$Name
@@ -20,6 +21,7 @@ archivos_estaciones<- archivos[grepl("STC_Metro_estaciones_utm14n\\.", archivos,
 unzip(temp, files = archivos_estaciones, exdir = "stcmetro_shp", junkpaths = TRUE)
 estaciones <- st_read(file.path("stcmetro_shp", "STC_Metro_estaciones_utm14n.shp"))
 
+#Estas lineas estan por que a veces es mas facil descargar y descomprimir los mapas localmente 
 #Jalamos los mapas de estaciones y lineas del metro 
 #lineas <- st_read("C:/Users/adolf/OneDrive/Documents/Mapa Metro/Estaciones y Lineas/STC_Metro_lineas_utm14n.shp")
 #estaciones <- st_read("C:/Users/adolf/OneDrive/Documents/Mapa Metro/Estaciones y Lineas/STC_Metro_estaciones_utm14n.shp")
@@ -54,7 +56,7 @@ aristas_linea <- estaciones_m |>
   transmute(from, to, LINEA, tipo_arista = "via")
 
 #Hacemos aristas que sirvan de transbordo 
-#creamos la lista de los nodos que son las estaciones 
+#creamos la lista de las estaciones
 tabla_nodos <- estaciones_m |> st_drop_geometry() |> select(node_id, NOMBRE)
 
 #creamos la lista de aristas de transborde 
@@ -103,15 +105,17 @@ red <- red |>
          tiempo_min = case_when(tipo_arista == "via"        ~ dist_m / (velocidad_tren_kmh * 1000 / 60),
                                 tipo_arista == "transbordo" ~ (dist_m / (velocidad_transbordo_kmh * 1000 / 60)) + minimo_transbordo_min),
          weight = tiempo_min)
+#Hasta aqui es la creacion de la red del metro con pesos. Esta parte solo se necesito hacer una vez. 
 
-#ya tenemos el mapa ya podemos preguntar como llegar de una estacion a otra 
-#debemos de jalar los nodos de origen y destino 
+
+#Ya tenemos el mapa ya podemos preguntar como llegar de una estacion a otra 
+#Debemos de crear los nodos de origen y destino 
 origen <- estaciones_m |> 
-  filter(NOMBRE == "Talismán", LINEA == "04") |> 
+  filter(NOMBRE == "Talismán", LINEA == "04") |> #Esta es la estacion de origen
   pull(node_id)
 
 destino <- estaciones_m |> 
-  filter(NOMBRE == "Tacuba", LINEA == "02") |> 
+  filter(NOMBRE == "Tacuba", LINEA == "02") |> #Esta es la estacion de destino
   pull(node_id)
 
 #Le pedimos la ruta mas corta 
